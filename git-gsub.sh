@@ -1,10 +1,7 @@
 #!/bin/bash
-# echo "$1"
-set -f
 
 declare -r pattern=$1
 declare -r value=$2
-
 
 read -a files <<< $(ag -l $pattern)
 
