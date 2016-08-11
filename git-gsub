@@ -3,13 +3,13 @@
 declare -r pattern=$1
 declare -r value=$2
 
-read -a files <<< $(ag -l $pattern)
+read -a files <<< $(git grep -l $pattern)
 
 for file in "${files[@]}"; do
   declare -a ocurrences;
    while read -r ocurrence; do
     ocurrences+=("$ocurrence")
-  done < <(ag $pattern $file)
+  done < <(git grep $pattern $file)
 
   for ocurrence in "${ocurrences[@]}"; do
     echo "$file:"
