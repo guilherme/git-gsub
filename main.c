@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
   ssize_t read;
   struct dirent *dir;
   d = opendir(".");
+  // TODO: find also in subdirectory. Stacks could be a good data structure to do it without using recursion.
+  // TODO: Put Concurrency.
   if (d)
   {
     while ((dir = readdir(d)) != NULL)
