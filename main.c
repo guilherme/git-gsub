@@ -16,7 +16,6 @@ int main(int argc, char *argv[]) {
 
 
   const char *regExp = argv[1];
-  const char *MatchedLine = argv[2];
   const char *pcreErrorStr;
   int errorOffset;
 
