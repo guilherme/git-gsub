@@ -15,11 +15,15 @@ int main(int argc, char *argv[]) {
   };
 
 
+
   const char *regExp = argv[1];
   const char *pcreErrorStr;
   int errorOffset;
 
-  int pcreExecRet;
+  char *substitute_word = argv[2];
+  int substitute_word_size = strlen(substitute_word);
+
+  int numberOfMatchesInLine;
 
   pcre *compiledRegexp = pcre_compile(regExp, 0, &pcreErrorStr, &errorOffset, NULL);
 
@@ -44,6 +48,7 @@ int main(int argc, char *argv[]) {
   ssize_t read;
   struct dirent *dir;
   d = opendir(".");
+  int ovector[30]; // TODO WHAT IF THERE ARE MORE THAN 30 occurrences?
   // TODO: find also in subdirectory. Stacks could be a good data structure to do it without using recursion.
   // TODO: Put Concurrency.
   if (d)
@@ -63,9 +68,9 @@ int main(int argc, char *argv[]) {
               exit(EXIT_FAILURE);
           while ((read = getline(&line, &len, fp)) != -1) {
             lines++;
-            pcreExecRet = pcre_exec(compiledRegexp, optmizedRegexp, line, strlen(line), 0, 0, NULL, 0);
-            if(pcreExecRet < 0) {
-              switch(pcreExecRet) {
+            numberOfMatchesInLine = pcre_exec(compiledRegexp, optmizedRegexp, line, strlen(line), 0, 0, ovector, 30);
+            if(numberOfMatchesInLine < 0) {
+              switch(numberOfMatchesInLine) {
                 case PCRE_ERROR_NOMATCH      : break; // didn't match the pattern
                 case PCRE_ERROR_NULL         : break; // Something was null
                 case PCRE_ERROR_BADOPTION    : break; // Bad option passed
@@ -75,15 +80,52 @@ int main(int argc, char *argv[]) {
                 default                      : break; // Unknown error
               }
             } else {
-              printf("%s:%d\n", (const char *)dir->d_name, lines);
-              printf("-%s", line);
-              printf("+%s", line); // TODO: DISCOVER HOW TO SUBSTITUTE
-              printf("change?[yN]\n");
-              scanf("%c", &choice);
-              if(choice == 'y' || choice == 'Y') {
-                // TODO: SUBSTITUTE IN FILE.
-                // PROBABLY: fseek the (fp - read) position and call write in the file, with the substituted line.
-              };
+              int match_offset_start = 0;
+              int match_offset_end = 0;
+              int matched_word_size;
+              int newLineSize;
+
+              for(int i = 0; i < numberOfMatchesInLine; i++) {
+                match_offset_start += ovector[2*i];
+                match_offset_end += ovector[2*i+1];
+
+                printf("%s:%d\n", (const char *)dir->d_name, lines);
+                printf("-%s", line);
+                printf("+%s", line); // TODO: DISCOVER HOW TO SUBSTITUTE
+                printf("change?[yN]\n");
+                scanf("%c", &choice);
+                if(choice == 'y' || choice == 'Y') {
+                  matched_word_size = (match_offset_end - match_offset_start);
+                  newLineSize = read - matched_word_size + substitute_word_size;
+
+                  printf("matched_word_size: %d\n", matched_word_size);
+
+                  char *newLine = malloc(newLineSize*sizeof(char));
+                  char *lineWalker = line;
+                  int lineOffset = 0;
+                  int substituteWordOffset = 0;
+                  char *copyFrom = line;
+                  // TODO IMPROVE THIS. THIS IS SHITTY.
+                  while(*lineWalker) {
+                    if (lineOffset == match_offset_start) {
+                      copyFrom = substitute_word;
+                    }
+                    if (*substitute_word == '\0') {
+                      copyFrom = line+lineOffset;
+                    };
+                    *newLine = *copyFrom;
+                    lineWalker++;
+                    lineOffset++;
+                  };
+                  printf("new line: %s\n", newLine);
+
+                  fseek(fp, -read, SEEK_CUR);
+                  fputs(newLine, fp);
+                  free(newLine);
+                } else {
+                  printf("false?\n");
+                }
+              }
             };
           }
           fclose(fp);
